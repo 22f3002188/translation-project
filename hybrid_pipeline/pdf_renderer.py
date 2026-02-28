@@ -1,119 +1,3 @@
-# # PDF_RENDER.PY
-# from weasyprint import HTML, CSS
-# import os
-
-
-# def render_pdf(soup, output_pdf):
-
-#     html_string = str(soup)
-
-#     os.makedirs(os.path.dirname(output_pdf), exist_ok=True)
-
-#     publication_css = CSS(string="""
-
-#         /* =========================
-#            DEVANAGARI FONT SUPPORT
-#            (Fix □□□ boxes issue)
-#         ========================== */
-
-#         @font-face {
-#             font-family: "NotoSansDevanagari";
-#             src: local("Noto Sans Devanagari"),
-#                  local("NotoSansDevanagari"),
-#                  url("/usr/share/fonts/truetype/NotoSansDevanagari.ttf") format("truetype");
-#         }
-
-#         body {
-#             font-family: "NotoSansDevanagari", "Noto Sans", "Times New Roman", serif;
-#             font-size: 12px;
-#             line-height: 1.6;
-#             text-align: justify;
-#         }
-
-#         /* =========================
-#            PAGE SETTINGS
-#         ========================== */
-
-#         @page {
-#             size: A3 landscape;
-#             margin: 15mm;
-#         }
-
-#         h1, h2, h3 {
-#             text-align: center;
-#             font-weight: bold;
-#             margin: 20px 0 10px 0;
-#         }
-
-#         /* =========================
-#            TABLE FIX START
-#         ========================== */
-
-#         table {
-#             width: 85%;
-#             margin-left: auto;
-#             margin-right: auto;
-#             border-collapse: collapse;
-#             table-layout: fixed;
-#             page-break-inside: auto;
-#         }
-
-#         thead {
-#             display: table-header-group;
-#         }
-
-#         tfoot {
-#             display: table-footer-group;
-#         }
-
-#         tr {
-#             page-break-inside: avoid;
-#             page-break-after: auto;
-#         }
-
-#         td, th {
-#             border: 1px solid black;
-#             padding: 8px;
-#             text-align: center;
-#             vertical-align: middle;
-#             word-wrap: break-word;
-#             overflow-wrap: break-word;
-#             white-space: normal;
-#             page-break-inside: avoid;
-#         }
-
-#         table.large-table {
-#             page-break-inside: auto;
-#         }
-
-#         /* =========================
-#            TABLE FIX END
-#         ========================== */
-
-#         img {
-#             max-width: 55%;
-#             height: auto;
-#             display: block;
-#             margin: 20px auto;
-#         }
-
-#     """)
-
-#     HTML(string=html_string).write_pdf(
-#         output_pdf,
-#         stylesheets=[publication_css]
-#     )
-
-#     print(f"Publication PDF saved → {output_pdf}")
-
-
-# pdf_render.py  (FINAL PAGINATION SAFE)
-
-# pdf_render.py  (COLUMN SAFE FINAL)
-
-
-# pdf_render.py
-
 from weasyprint import HTML, CSS
 import os
 
@@ -126,72 +10,149 @@ def render_pdf(soup, output_pdf):
 
     publication_css = CSS(string="""
 
-        @page {
-            size: A3 landscape;
-            margin: 15mm;
-        }
+    /* ===============================
+       GLOBAL RESET
+    ================================ */
 
-        body {
-            font-family:
-                "Noto Sans Devanagari",
-                Arial,
-                sans-serif;
-            font-size: 12px;
-            line-height: 1.6;
-        }
+    * {
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+    }
 
-        table {
-            width:100%;
-            border-collapse:collapse;
-            table-layout:auto;
-            page-break-inside:auto;
-        }
+    body {
+        font-family: "NotoSansDevanagari", serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f8f2;
+        color: #222222;
+    }
 
-        tr {
-            page-break-inside:avoid;
-        }
+    /* ===============================
+       MAIN HEADINGS
+    ================================ */
 
-        th, td {
-            border:1px solid black;
-            padding:18px;
-            vertical-align:top;
-            word-wrap:break-word;
-            overflow-wrap:break-word;
-            white-space:normal;
-        }
-        /* =========================
-        FINAL TABLE PAGINATION
-        ========================= */
+    h1 {
+        font-size: 22px !important;
+        color: #1b5e20;
+        border-bottom: 3px solid #2e7d32;
+        padding-bottom: 6px;
+        margin: 20px 0 12px 0;
+        font-weight: bold;
+    }
 
-        table {
-            page-break-inside:auto;
-            break-inside:auto;
-            margin-top:30px;
-            margin-bottom:30px;
-            display:block;
-        }
+    h2 {
+        font-size: 18px !important;
+        color: #2e7d32;
+        border-left: 5px solid #66bb6a;
+        padding-left: 10px;
+        margin: 16px 0 10px 0;
+        font-weight: bold;
+    }
 
-        thead {
-            display:table-header-group;
-        }
+    h3 {
+        font-size: 16px !important;
+        color: #388e3c;
+        margin: 14px 0 8px 0;
+        font-weight: bold;
+    }
 
-        tfoot {
-            display:table-footer-group;
-        }
+    /* ===============================
+       PARAGRAPH CLEAN FORMAT
+    ================================ */
 
-        /* Prevent text overlap */
-        p, div, section {
-            page-break-inside:auto;
-        }
+    p {
+        margin: 10px 0;
+        text-align: justify;
+        text-indent: 25px;
+        font-size: 14px !important;
+        line-height: 1.7 !important;
+    }
 
-        /* Space around tables */
-        table + p,
-        table + div {
-            margin-top:20px;
-        }
+    div {
+        margin: 6px 0;
+        text-align: justify;
+    }
+
+    /* ===============================
+       BULLET LIST FIX
+    ================================ */
+
+    ul {
+        margin: 8px 0 8px 25px;
+        padding-left: 10px;
+    }
+
+    li {
+        margin-bottom: 6px;
+        font-size: 14px !important;
+        line-height: 1.6 !important;
+    }
+
+    /* ===============================
+       TABLE STYLING (CLEAN & CENTERED)
+    ================================ */
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+        background-color: #ffffff;
+        table-layout: fixed;
+    }
+
+    thead {
+        display: table-header-group;
+        background-color: #c8e6c9;
+    }
+
+    tr {
+        page-break-inside: avoid;
+    }
+
+    td, th {
+        border: 1px solid #2e7d32;
+        padding: 8px;
+        vertical-align: top;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
+        font-size: 13px !important;
+    }
+
+    th {
+        background-color: #a5d6a7;
+        color: #1b5e20;
+        font-weight: bold;
+        text-align: center;
+    }
+
+    /* ===============================
+       IMAGE STYLE
+    ================================ */
+
+    img {
+        max-width: 60%;
+        display: block;
+        margin: 15px auto;
+        border: 2px solid #2e7d32;
+        padding: 4px;
+        background-color: white;
+    }
+
+    /* ===============================
+       PAGE SETTINGS
+    ================================ */
+
+    @page {
+        size: A3 landscape;
+        margin: 18mm;
+    }
+
     """)
 
     HTML(string=html_string).write_pdf(
         output_pdf,
         stylesheets=[publication_css]
     )
+
+    print(f"Publication PDF saved → {output_pdf}")
