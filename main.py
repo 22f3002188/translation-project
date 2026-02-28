@@ -67,7 +67,7 @@ def detect_pdf_language(pdf_path):
         print(f"Total words: {len(words)}")
         print(f"Unique words: {len(unique_words)}")
 
-        # 🔥 Weak or repetitive text layer
+        #  Weak or repetitive text layer
         if len(unique_words) < 50:
             print("Weak text layer → Forcing OCR")
             return "unknown"
@@ -124,7 +124,7 @@ def process_pdf(pdf_path):
     os.makedirs(OUTPUT_PDF, exist_ok=True)
 
     # ========================================
-    # 1️⃣ METADATA
+    # 1️ METADATA
     # ========================================
     metadata = extract_metadata(pdf_path)
 
@@ -133,7 +133,7 @@ def process_pdf(pdf_path):
         print(f"   {key}: {value}")
 
     # ========================================
-    # 2️⃣ TEXT-LAYER LANGUAGE CHECK
+    # 2️ TEXT-LAYER LANGUAGE CHECK
     # ========================================
     lang_type = detect_pdf_language(pdf_path)
     metadata["detected_language_type"] = lang_type
@@ -148,7 +148,7 @@ def process_pdf(pdf_path):
         return
 
     # ========================================
-    # 3️⃣ RUN OCR (Image-based or Mixed PDFs)
+    # 3️ RUN OCR (Image-based or Mixed PDFs)
     # ========================================
     print("\n Running OCR...")
 
@@ -167,7 +167,7 @@ def process_pdf(pdf_path):
     ocr_text = soup.get_text(" ", strip=True)
 
     # ========================================
-    # 4️⃣ OCR LANGUAGE DENSITY ANALYSIS
+    # 4️ OCR LANGUAGE DENSITY ANALYSIS
     # ========================================
 
     words = re.findall(r'\b\w+\b', ocr_text)
@@ -192,7 +192,7 @@ def process_pdf(pdf_path):
     print(f"   Devanagari ratio: {dev_ratio:.3f}")
 
     # ========================================
-    # 5️⃣ DECISION LOGIC
+    # 5️ DECISION LOGIC
     # ========================================
 
     # If document is predominantly English → skip
@@ -212,7 +212,7 @@ def process_pdf(pdf_path):
         return
 
     # ========================================
-    # 6️⃣ TRANSLATE + REBUILD + RENDER
+    # 6️ TRANSLATE + REBUILD + RENDER
     # ========================================
     print("\n Running Translation + Layout Rebuild")
 
