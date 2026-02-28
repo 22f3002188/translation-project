@@ -104,26 +104,94 @@ def normalize_numerals(text):
         text = text.replace(k, v)
     return text
 
+# Common agricultural and structural words
+SAFE_WORDS = {
+    "the", "and", "with", "from", "that", "this", "should",
+    "will", "are", "was", "for", "per", "crop", "soil",
+    "seed", "water", "variety", "plants", "plant",
+    "growth", "yield", "disease", "pigeon", "pea",
+    "hectare", "kg", "gm", "field", "land", "storage",
+    "fungus", "moisture", "flowering", "harvest"
+}
 
+def repair_word_boundaries(text):
+
+    if not text:
+        return text
+
+    words = text.split()
+    repaired_words = []
+
+    for token in words:
+
+        lower_token = token.lower()
+
+        # Skip short words
+        if len(token) < 7:
+            repaired_words.append(token)
+            continue
+
+        split_done = False
+
+        # Try safe split positions
+        for i in range(3, len(token) - 3):
+
+            left = lower_token[:i]
+            right = lower_token[i:]
+
+            if left in SAFE_WORDS and right in SAFE_WORDS:
+                repaired_words.append(token[:i] + " " + token[i:])
+                split_done = True
+                break
+
+        if not split_done:
+            repaired_words.append(token)
+
+    text = " ".join(repaired_words)
+
+    # Specific safe fixes
+    text = re.sub(r'pigeonpea', 'pigeon pea', text, flags=re.IGNORECASE)
+
+    # Fix uppercase merges
+    text = re.sub(r'([A-Z]{3,})([A-Z][a-z])', r'\1 \2', text)
+
+    # Normalize spacing
+    text = re.sub(r'\s+', ' ', text)
+
+    return text.strip()
 # ======================================================
 # CLEAN OCR NOISE
 # ======================================================
-
 def clean_text(text):
+
+    if not text:
+        return text
 
     text = normalize_numerals(text)
 
-    # Remove special bullets
     text = re.sub(r"[|•▪●◆■]", " ", text)
 
-    #  Merge vertical broken words
     text = re.sub(r"(\w)\s*\n\s*(\w)", r"\1\2", text)
 
-    # Remove line breaks
-    text = text.replace("\n", " ")
+    text = re.sub(r'(?<=[a-z0-9])\.(?=[A-Za-z])', '. ', text)
+    text = re.sub(r'(?<=[a-z0-9]):(?=[A-Za-z])', ': ', text)
+    text = re.sub(r'(?<=[a-z0-9]),(?=[A-Za-z])', ', ', text)
 
-    # Normalize spaces
-    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r'\b(\w+)\.\s*\1\b', r'\1', text, flags=re.IGNORECASE)
+
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+
+    text = re.sub(r'(\d)([A-Za-z])', r'\1 \2', text)
+    text = re.sub(r'([A-Za-z])(\d)', r'\1 \2', text)
+
+    text = re.sub(r'\s*/\s*', ' / ', text)
+
+    text = re.sub(r'\.{2,}', '.', text)
+
+    text = re.sub(r'\s+', ' ', text)
+
+    #  NEW: Repair glued words
+    text = repair_word_boundaries(text)
 
     return text.strip()
 
