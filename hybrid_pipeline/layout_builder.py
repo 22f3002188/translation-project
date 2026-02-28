@@ -2,7 +2,61 @@ from bs4 import BeautifulSoup, NavigableString
 from hybrid_pipeline.translator import translate_text
 import re
 
+# Common agricultural and structural words
+SAFE_WORDS = {
+    "the", "and", "with", "from", "that", "this", "should",
+    "will", "are", "was", "for", "per", "crop", "soil",
+    "seed", "water", "variety", "plants", "plant",
+    "growth", "yield", "disease", "pigeon", "pea",
+    "hectare", "kg", "gm", "field", "land", "storage",
+    "fungus", "moisture", "flowering", "harvest"
+}
 
+def repair_word_boundaries(text):
+
+    if not text:
+        return text
+
+    words = text.split()
+    repaired_words = []
+
+    for token in words:
+
+        lower_token = token.lower()
+
+        # Skip short words
+        if len(token) < 7:
+            repaired_words.append(token)
+            continue
+
+        split_done = False
+
+        # Try safe split positions
+        for i in range(3, len(token) - 3):
+
+            left = lower_token[:i]
+            right = lower_token[i:]
+
+            if left in SAFE_WORDS and right in SAFE_WORDS:
+                repaired_words.append(token[:i] + " " + token[i:])
+                split_done = True
+                break
+
+        if not split_done:
+            repaired_words.append(token)
+
+    text = " ".join(repaired_words)
+
+    # Specific safe fixes
+    text = re.sub(r'pigeonpea', 'pigeon pea', text, flags=re.IGNORECASE)
+
+    # Fix uppercase merges
+    text = re.sub(r'([A-Z]{3,})([A-Z][a-z])', r'\1 \2', text)
+
+    # Normalize spacing
+    text = re.sub(r'\s+', ' ', text)
+
+    return text.strip()
 # ----------------------------------------
 # Clean OCR text
 # ----------------------------------------
@@ -11,17 +65,29 @@ def clean_ocr_text(text):
     if not text:
         return text
 
-    # Remove bullet characters
     text = re.sub(r"[•▪●◆■]", " ", text)
 
-    # Merge broken line words
     text = re.sub(r"(\w)\s*\n\s*(\w)", r"\1\2", text)
 
-    # Remove line breaks
-    text = text.replace("\n", " ")
+    text = re.sub(r'(?<=[a-z0-9])\.(?=[A-Za-z])', '. ', text)
+    text = re.sub(r'(?<=[a-z0-9]):(?=[A-Za-z])', ': ', text)
+    text = re.sub(r'(?<=[a-z0-9]),(?=[A-Za-z])', ', ', text)
 
-    # Normalize spacing
-    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r'\b(\w+)\.\s*\1\b', r'\1', text, flags=re.IGNORECASE)
+
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+
+    text = re.sub(r'(\d)([A-Za-z])', r'\1 \2', text)
+    text = re.sub(r'([A-Za-z])(\d)', r'\1 \2', text)
+
+    text = re.sub(r'\s*/\s*', ' / ', text)
+
+    text = re.sub(r'\.{2,}', '.', text)
+
+    text = re.sub(r'\s+', ' ', text)
+
+    #  NEW: Repair glued words
+    text = repair_word_boundaries(text)
 
     return text.strip()
 # ----------------------------------------
@@ -99,7 +165,6 @@ def translate_headings_and_paragraphs(soup):
     print(" Paragraph translation completed\n")
     return soup
 
-
 # ----------------------------------------
 # Translate bullet lists
 # ----------------------------------------
@@ -131,6 +196,7 @@ def translate_tables(soup):
 
     for table in tables:
 
+        # Clean table style (keep your original layout intention)
         table["style"] = """
             width:85%;
             margin-left:auto;
@@ -147,20 +213,35 @@ def translate_tables(soup):
         if not rows:
             continue
 
-        columns = len(rows[0].find_all(["td", "th"]))
+        # ------------------------------
+        # 🔹 Clean fragmented header text
+        # ------------------------------
+        for th in table.find_all("th"):
+            header_text = th.get_text(" ", strip=True)
+            header_text = re.sub(r'\s+', ' ', header_text)
+            th.clear()
+            th.append(header_text)
+
+        # ------------------------------
+        # 🔹 Measure column width based on content length
+        # ------------------------------
+        first_row_cells = rows[0].find_all(["td", "th"])
+        columns = len(first_row_cells)
         col_lengths = [0] * columns
 
-        # Measure column text length
         for row in rows:
             cells = row.find_all(["td", "th"])
             for i, cell in enumerate(cells):
                 text = cell.get_text(" ", strip=True)
+                text = re.sub(r'\s+', ' ', text)
                 if len(text) > col_lengths[i]:
                     col_lengths[i] = len(text)
 
         total = sum(col_lengths) or 1
 
-        # Apply proportional width
+        # ------------------------------
+        # 🔹 Apply proportional width + clean text
+        # ------------------------------
         for row in rows:
             cells = row.find_all(["td", "th"])
 
@@ -184,11 +265,18 @@ def translate_tables(soup):
                     white-space:normal;
                 """
 
+                # Clean OCR noise before translation
+                full_text = cell.get_text(" ", strip=True)
+                full_text = clean_ocr_text(full_text)
+
+                cell.clear()
+                cell.append(full_text)
+
+                # Translate content safely
                 translate_text_nodes(cell)
 
     print(" Table translation completed\n")
     return soup
-
 
 # ----------------------------------------
 # Translate remaining div blocks safely
@@ -202,7 +290,48 @@ def translate_div_blocks(soup):
 
     return soup
 
+# ----------------------------------------
+# Merge small consecutive div blocks into proper paragraphs
+# ----------------------------------------
+def merge_small_div_blocks(soup):
 
+    body = soup.body
+    if not body:
+        return soup
+
+    new_elements = []
+    buffer = ""
+
+    for element in body.find_all(["div", "p"], recursive=False):
+
+        text = element.get_text(" ", strip=True)
+
+        if not text:
+            continue
+
+        # Only merge very small fragments (less aggressive)
+        if len(text) < 120:
+            buffer += " " + text
+        else:
+            if buffer:
+                new_p = soup.new_tag("p")
+                new_p.string = buffer.strip()
+                new_elements.append(new_p)
+                buffer = ""
+
+            new_elements.append(element)
+
+    if buffer:
+        new_p = soup.new_tag("p")
+        new_p.string = buffer.strip()
+        new_elements.append(new_p)
+
+    body.clear()
+
+    for el in new_elements:
+        body.append(el)
+
+    return soup
 # ----------------------------------------
 # Fix images
 # ----------------------------------------
@@ -234,6 +363,8 @@ def rebuild_layout(html_path):
         soup = BeautifulSoup(f, "html.parser")
 
     soup = normalize_layout(soup)
+
+    soup = merge_small_div_blocks(soup)
 
     soup = translate_headings_and_paragraphs(soup)
 
